@@ -1,0 +1,12 @@
+# Ignore all
+*
+# Unignore files with extensions
+!*.*
+# Unignore directories
+!*/
+# Unignore makefile
+!Makefile
+# Ignore bin dir
+bin/*
+# ignore .git dir
+.git/*
