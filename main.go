@@ -1,48 +1,37 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+
+	"github.com/jamesonhm/chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	serverHits atomic.Int32
-}
-
-func (cfg *apiConfig) middlewareMetrics(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		cfg.serverHits.Add(1)
-		next.ServeHTTP(w, req)
-	})
-}
-
-func (cfg *apiConfig) metricsHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(http.StatusOK)
-	htmlString := fmt.Sprintf(`
-<html>
-    <body>
-        <h1>Welcome, Chirpy Admin</h1>
-        <p>Chirpy has been visited %d times!</p>
-    </body>
-</html>
-`, cfg.serverHits.Load())
-	w.Write([]byte(htmlString))
-}
-
-func (cfg *apiConfig) resetHandler(w http.ResponseWriter, req *http.Request) {
-	cfg.serverHits.Swap(0)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hits reset to 0"))
+	queries    *database.Queries
 }
 
 func main() {
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	const port = ":8080"
 	const filepathRoot = "."
 
-	cfg := &apiConfig{}
+	cfg := &apiConfig{
+		serverHits: atomic.Int32{},
+		queries:    database.New(db),
+	}
 
 	mux := http.NewServeMux()
 
@@ -61,10 +50,4 @@ func main() {
 	log.Printf("Serving on port: %s\n", port)
 	log.Fatal(srv.ListenAndServe())
 
-}
-
-func healthHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(http.StatusText(http.StatusOK)))
 }

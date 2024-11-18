@@ -10,3 +10,5 @@
 bin/*
 # ignore .git dir
 .git/*
+# ignore .env
+.env
