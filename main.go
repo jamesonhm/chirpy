@@ -1,8 +1,6 @@
 package main
 
 import (
-	//"fmt"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -69,39 +67,4 @@ func healthHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(http.StatusText(http.StatusOK)))
-}
-
-func chirpValidHandler(w http.ResponseWriter, req *http.Request) {
-	type chirp struct {
-		Body string `json:"body"`
-	}
-	type errVal struct {
-		Err string `json:"error"`
-	}
-	type retVal struct {
-		Valid bool `json:"valid"`
-	}
-
-	decoder := json.NewDecoder(req.Body)
-	c := chirp{}
-	err := decoder.Decode(&c)
-	if err != nil {
-		log.Printf("Error decoding chirp: %s", err)
-		respBody := errVal{
-			Err: "error decoding chirp",
-		}
-		dat, _ := json.Marshal(respBody)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(500)
-		w.Write(dat)
-		return
-	}
-	respBody := retVal{
-		Valid: true,
-	}
-	dat, _ := json.Marshal(respBody)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	w.Write(dat)
-
 }
