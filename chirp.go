@@ -1,47 +1,68 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jamesonhm/chirpy/internal/database"
 )
 
-func deprofane(input string) string {
+type Chirp struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	UserID    uuid.UUID `json:"user_id"`
+}
+
+func (cfg *apiConfig) createChirpHandler(w http.ResponseWriter, r *http.Request) {
+	type params struct {
+		Body   string    `json:"body"`
+		UserID uuid.UUID `json:"user_id"`
+	}
+
+	p, err := decode[params](r)
+	if err != nil {
+		msg := "error decoding chirp"
+		errorResponse(w, r, 500, msg, err)
+		return
+	}
+	cleanedBody, err := validateChirp(p.Body)
+	if err != nil {
+		errorResponse(w, r, 400, "error validating chirp", err)
+	}
+
+	createdChirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
+		Body:   cleanedBody,
+		UserID: p.UserID,
+	})
+	if err != nil {
+		errorResponse(w, r, http.StatusInternalServerError, "error creating chirp", err)
+		return
+	}
+	respBody := Chirp(createdChirp)
+	encodeJsonResp(w, r, 201, respBody)
+
+}
+
+func validateChirp(body string) (string, error) {
+	if len(body) > 140 {
+		return "", errors.New("Chirp too long")
+	}
+
 	profane := map[string]struct{}{
 		"kerfuffle": {},
 		"sharbert":  {},
 		"fornax":    {},
 	}
-	words := strings.Split(input, " ")
+	words := strings.Split(body, " ")
 	for i, word := range words {
 		if _, ok := profane[strings.ToLower(word)]; ok {
 			words[i] = "****"
 		}
 	}
-	return strings.Join(words, " ")
-}
-
-func chirpValidHandler(w http.ResponseWriter, req *http.Request) {
-	type chirp struct {
-		Body string `json:"body"`
-	}
-	type retVal struct {
-		CleanedBody string `json:"cleaned_body"`
-	}
-
-	c, err := decode[chirp](req)
-	if err != nil {
-		msg := "error decoding chirp"
-		errorResponse(w, req, 500, msg, err)
-		return
-	}
-	if len(c.Body) > 140 {
-		msg := "Chirp too long"
-		errorResponse(w, req, 400, msg, nil)
-		return
-	}
-
-	respBody := retVal{
-		CleanedBody: deprofane(c.Body),
-	}
-	encodeJsonResp(w, req, 200, respBody)
+	return strings.Join(words, " "), nil
 }
