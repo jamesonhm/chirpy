@@ -14,12 +14,17 @@ import (
 
 type apiConfig struct {
 	serverHits atomic.Int32
-	queries    *database.Queries
+	db         *database.Queries
+	platform   string
 }
 
 func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
+	platform := os.Getenv("PLATFORM")
+	if platform == "" {
+		log.Fatal("PLATFORM must be set")
+	}
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal(err)
@@ -30,7 +35,8 @@ func main() {
 
 	cfg := &apiConfig{
 		serverHits: atomic.Int32{},
-		queries:    database.New(db),
+		db:         database.New(db),
+		platform:   platform,
 	}
 
 	mux := http.NewServeMux()
@@ -38,6 +44,7 @@ func main() {
 	mux.Handle("/app/", cfg.middlewareMetrics(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
 	mux.HandleFunc("GET /api/healthz", healthHandler)
 	mux.HandleFunc("POST /api/validate_chirp", chirpValidHandler)
+	mux.HandleFunc("POST /api/users", cfg.createUserHandler)
 
 	mux.HandleFunc("GET /admin/metrics", cfg.metricsHandler)
 	mux.HandleFunc("POST /admin/reset", cfg.resetHandler)

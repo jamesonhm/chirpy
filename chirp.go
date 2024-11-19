@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 )
@@ -29,10 +28,7 @@ func chirpValidHandler(w http.ResponseWriter, req *http.Request) {
 		CleanedBody string `json:"cleaned_body"`
 	}
 
-	decoder := json.NewDecoder(req.Body)
-	c := &chirp{}
-	err := decoder.Decode(c)
-
+	c, err := decode[chirp](req)
 	if err != nil {
 		msg := "error decoding chirp"
 		errorResponse(w, req, 500, msg, err)
