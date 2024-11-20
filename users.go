@@ -5,30 +5,41 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jamesonhm/chirpy/internal/auth"
+	"github.com/jamesonhm/chirpy/internal/database"
 )
 
+type userResp struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+}
+
 func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {
-	type userEmail struct {
-		Email string `json:"email"`
-	}
-	type resp struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
+	type userEntry struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
-	params, err := decode[userEmail](r)
+	params, err := decode[userEntry](r)
 	if err != nil {
 		errorResponse(w, r, 500, "error decoding user", err)
 		return
 	}
+	hashed, err := auth.HashPassword(params.Password)
+	if err != nil {
+		errorResponse(w, r, http.StatusInternalServerError, "error hashing pw", err)
+	}
 
-	user, err := cfg.db.CreateUser(r.Context(), params.Email)
+	userDb, err := cfg.db.CreateUser(r.Context(), database.CreateUserParams{
+		Email:          params.Email,
+		HashedPassword: hashed,
+	})
 	if err != nil {
 		errorResponse(w, r, 500, "error creating user", err)
 	}
-	userResp := resp(user)
-	err = encodeJsonResp(w, r, 201, userResp)
+	user := userResp(userDb)
+	err = encodeJsonResp(w, r, 201, user)
 
 }
