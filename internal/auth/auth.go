@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -15,6 +16,11 @@ type CustomClaims struct {
 	Foo string `json:"foo"`
 	jwt.RegisteredClaims
 }
+type TokenType string
+
+const (
+	TokenTypeAccess TokenType = "chirpy"
+)
 
 func HashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -36,7 +42,7 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 	claims := CustomClaims{
 		"bar",
 		jwt.RegisteredClaims{
-			Issuer:    "chirpy",
+			Issuer:    string(TokenTypeAccess),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiresIn)),
 			Subject:   userID.String(),
@@ -62,6 +68,14 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 	if err != nil {
 		return uuid.Nil, err
 	}
+	issuer, err := token.Claims.GetIssuer()
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if issuer != string(TokenTypeAccess) {
+		return uuid.Nil, errors.New("invalid issuer")
+	}
+
 	userID, err := uuid.Parse(id)
 	return userID, err
 }

@@ -22,11 +22,18 @@ type apiConfig struct {
 func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
-	platform := os.Getenv("PLATFORM")
-	secret := os.Getenv("Secret")
-	if platform == "" {
-		log.Fatal("PLATFORM must be set")
+	if dbURL == "" {
+		log.Fatal("DB_URL env variable must be set")
 	}
+	platform := os.Getenv("PLATFORM")
+	if platform == "" {
+		log.Fatal("PLATFORM env variable must be set")
+	}
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		log.Fatal("JWT_SECRET env variable is not set")
+	}
+
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal(err)

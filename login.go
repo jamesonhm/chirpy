@@ -2,9 +2,15 @@ package main
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/jamesonhm/chirpy/internal/auth"
 )
+
+type response struct {
+	userResp
+	Token string `json:"token"`
+}
 
 func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 	type creds struct {
@@ -31,10 +37,22 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	encodeJsonResp(w, r, http.StatusOK, userResp{
-		ID:        userDb.ID,
-		CreatedAt: userDb.CreatedAt,
-		UpdatedAt: userDb.UpdatedAt,
-		Email:     userDb.Email,
+	if params.ExpiresInSeconds == 0 || params.ExpiresInSeconds > 3600 {
+		params.ExpiresInSeconds = 3600
+	}
+	expireTime := time.Second * time.Duration(params.ExpiresInSeconds)
+	token, err := auth.MakeJWT(userDb.ID, cfg.tokenSecret, expireTime)
+	if err != nil {
+		errorResponse(w, r, http.StatusInternalServerError, "error creating jwt", err)
+	}
+
+	encodeJsonResp(w, r, http.StatusOK, response{
+		userResp: userResp{
+			ID:        userDb.ID,
+			CreatedAt: userDb.CreatedAt,
+			UpdatedAt: userDb.UpdatedAt,
+			Email:     userDb.Email,
+		},
+		Token: token,
 	})
 }
