@@ -112,3 +112,41 @@ func validateChirp(body string) (string, error) {
 	}
 	return strings.Join(words, " "), nil
 }
+
+func (cfg *apiConfig) deleteChirpHandler(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		errorResponse(w, r, http.StatusUnauthorized, "unable to get jwt from header", err)
+		return
+	}
+
+	validID, err := auth.ValidateJWT(token, cfg.tokenSecret)
+	if err != nil {
+		errorResponse(w, r, http.StatusUnauthorized, "unable to validate jwt", err)
+		return
+	}
+
+	chirpID := r.PathValue("chirpID")
+	chirpUUID, err := uuid.Parse(chirpID)
+	if err != nil {
+		errorResponse(w, r, http.StatusBadRequest, "Invalid chirp ID", nil)
+		return
+	}
+	chirpDb, err := cfg.db.GetChirpByID(r.Context(), chirpUUID)
+	if err != nil {
+		errorResponse(w, r, http.StatusNotFound, "chirp not found", err)
+		return
+	}
+
+	if chirpDb.UserID != validID {
+		errorResponse(w, r, http.StatusForbidden, "you are not the author of this chirp", nil)
+		return
+	}
+
+	err := cfg.db.DeleteChirpByID(r.Context(), chirpUUID)
+	if err != nil {
+		errorResponse(w, r, http.StatusNotFound, "unable to delete chirp", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

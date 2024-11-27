@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"time"
 
@@ -9,7 +8,10 @@ import (
 	"github.com/jamesonhm/chirpy/internal/database"
 )
 
-const jwt_expire_seconds = 3600
+const (
+	jwt_expire_seconds = 3600
+	expireTime         = time.Second * time.Duration(jwt_expire_seconds)
+)
 
 type response struct {
 	userResp
@@ -41,7 +43,6 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expireTime := time.Second * time.Duration(jwt_expire_seconds)
 	token, err := auth.MakeJWT(userDb.ID, cfg.tokenSecret, expireTime)
 	if err != nil {
 		errorResponse(w, r, http.StatusInternalServerError, "error creating jwt", err)
@@ -84,13 +85,12 @@ func (cfg *apiConfig) refreshHandler(w http.ResponseWriter, r *http.Request) {
 		errorResponse(w, r, 401, "not logged in", err)
 		return
 	}
-	log.Printf("curr time: %v, expires at: %v\n", time.Now(), tokenDb.ExpiresAt)
+
 	if time.Now().After(tokenDb.ExpiresAt) || (tokenDb.RevokedAt.Valid && time.Now().After(tokenDb.RevokedAt.Time)) {
 		errorResponse(w, r, 401, "not logged in", err)
 		return
 	}
 
-	expireTime := time.Second * time.Duration(jwt_expire_seconds)
 	jwt, err := auth.MakeJWT(tokenDb.UserID, cfg.tokenSecret, expireTime)
 	if err != nil {
 		errorResponse(w, r, http.StatusInternalServerError, "error creating jwt", err)
