@@ -2,7 +2,9 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -44,8 +46,30 @@ func (cfg *apiConfig) getChirpsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	authorUUID := uuid.Nil
+	authorID := r.FormValue("author_id")
+	if authorID != "" {
+		authorUUID, err = uuid.Parse(authorID)
+		if err != nil {
+			errorResponse(w, r, http.StatusBadRequest, "invalid author id", err)
+			return
+		}
+	}
+
+	sort := r.FormValue("sort")
+	if sort != "" && sort != "asc" && sort != "desc" {
+		errorResponse(w, r, http.StatusBadRequest, fmt.Sprintf("invalid sort query parameter %s", sort), nil)
+		return
+	}
+	if sort == "desc" {
+		slices.Reverse(chirps)
+	}
+
 	resp := []Chirp{}
 	for _, chirp := range chirps {
+		if authorUUID != uuid.Nil && chirp.UserID != authorUUID {
+			continue
+		}
 		resp = append(resp, Chirp(chirp))
 	}
 
