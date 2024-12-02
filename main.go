@@ -17,6 +17,7 @@ type apiConfig struct {
 	db          *database.Queries
 	platform    string
 	tokenSecret string
+	polkaKey    string
 }
 
 func main() {
@@ -33,6 +34,10 @@ func main() {
 	if secret == "" {
 		log.Fatal("JWT_SECRET env variable is not set")
 	}
+	polkaKey := os.Getenv("POLKA_KEY")
+	if polkaKey == "" {
+		log.Fatal("POLKA_KEY env variable is not set")
+	}
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -47,6 +52,7 @@ func main() {
 		db:          database.New(db),
 		platform:    platform,
 		tokenSecret: secret,
+		polkaKey:    polkaKey,
 	}
 
 	mux := http.NewServeMux()
@@ -62,6 +68,7 @@ func main() {
 	mux.HandleFunc("POST /api/login", cfg.loginHandler)
 	mux.HandleFunc("POST /api/refresh", cfg.refreshHandler)
 	mux.HandleFunc("POST /api/revoke", cfg.revokeHandler)
+	mux.HandleFunc("POST /api/polka/webhooks", cfg.upgradeHandler)
 
 	mux.HandleFunc("GET /admin/metrics", cfg.metricsHandler)
 	mux.HandleFunc("POST /admin/reset", cfg.resetHandler)

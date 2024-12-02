@@ -143,7 +143,7 @@ func (cfg *apiConfig) deleteChirpHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err := cfg.db.DeleteChirpByID(r.Context(), chirpUUID)
+	err = cfg.db.DeleteChirpByID(r.Context(), chirpUUID)
 	if err != nil {
 		errorResponse(w, r, http.StatusNotFound, "unable to delete chirp", err)
 		return

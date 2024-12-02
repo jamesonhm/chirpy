@@ -61,10 +61,11 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	encodeJsonResp(w, r, http.StatusOK, response{
 		userResp: userResp{
-			ID:        userDb.ID,
-			CreatedAt: userDb.CreatedAt,
-			UpdatedAt: userDb.UpdatedAt,
-			Email:     userDb.Email,
+			ID:          userDb.ID,
+			CreatedAt:   userDb.CreatedAt,
+			UpdatedAt:   userDb.UpdatedAt,
+			Email:       userDb.Email,
+			IsChirpyRed: userDb.IsChirpyRed,
 		},
 		Token:        token,
 		RefreshToken: refresh_token,
